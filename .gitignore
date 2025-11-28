@@ -1,0 +1,23 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build output
+/dist/
+frontend/dist/
+backend/dist/
+
+# Local env files
+*.env
+!.env.example
+frontend/.env
+backend/.env
+
+# Vite/coverage caches
+frontend/.vite
+coverage/
+
+# macOS
+.DS_Store
