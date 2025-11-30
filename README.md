@@ -1,74 +1,90 @@
 # AnyCam
 
-AI Camera that lets you travel anywhere, anytime.
+把你的自拍融合到世界任意地点与时刻的真实场景中。上传照片、选择地点与时间，AI 将生成一张你身处该地当下氛围的照片。
 
-## Project Structure
+**在线地址**
+- 连接 GitHub 后一键部署到 Vercel；前端为静态构建，`/api/generate` 由无服务器函数处理。
 
-- `frontend/`: React + Vite application
-- `backend/`: Node.js + Express server
+**核心能力**
+- 上传或拍摄照片，前端自动压缩为 DataURL。
+- 选择地点（内置地图与坐标），选择日期与时段（如日出/正午/夜晚）。
+- 后端调用图像编辑服务生成结果，并可选融合 Google Street View 的环境参考。
+- 输出 `imageUrl`（URL 或 DataURL）与生成耗时。
 
-## Setup & Run
+## 项目架构
 
-### Frontend
+- `frontend/`：React + Vite（TailwindCSS 等），通过 `axios` 调用 `/api/generate`。
+- `api/`：Vercel 无服务器函数，`api/generate.js` 完整实现图片规范化、构建表单、调用上游与容错解析。
+- `backend/`：本地开发用的 Express 版本（与函数逻辑同源），线上不需要运行。
+- `vercel.json`：定义静态构建与函数绑定，以及 SPA 回退规则。
 
-1. Navigate to `frontend` directory:
-   ```bash
-   cd frontend
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Run development server:
-   ```bash
-   npm run dev
-   ```
-4. Configure environment variables:
-   - Duplicate `.env.example` into `.env`
-   - Set `VITE_API_BASE_URL` to where your backend is running (defaults to `http://localhost:3000`)
-   - Add any future public keys with the `VITE_` prefix
+目录结构示例：
+- `frontend/src/App.jsx`：前端发起 `axios.post('/api/generate', requestData)`
+- `api/generate.js`：线上生成逻辑入口
+- `frontend/vite.config.js`：本地开发代理 `/api -> http://localhost:3000`
 
-### Backend
+## 快速开始（本地）
 
-1. Navigate to `backend` directory:
-   ```bash
-   cd backend
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Create `.env` file with your API keys:
-   ```env
-   NANO_BANANA_API_KEY=your_key_here
-   ```
-4. Run server:
-   ```bash
-   npm start
-   ```
+- 前端：
+  - `cd frontend`
+  - `npm install`
+  - `cp .env.example .env` 后填写 `VITE_MAPBOX_TOKEN`（可选）
+  - `npm run dev`
 
-## Frontend ↔ Backend Integration
+- 后端（本地联调可选）：
+  - `cd backend`
+  - `npm install`
+  - `cp .env.example .env` 并填写 `NANO_BANANA_API_KEY` 等参数
+  - `npm run dev` 或 `npm start`
 
-| Layer    | Config / Endpoint                 | Description |
-|----------|-----------------------------------|-------------|
-| Frontend | `VITE_API_BASE_URL=/api`          | Vite proxy forwards `/api/*` to backend (`vite.config.js`) |
-| Backend  | `POST /api/upload`                | Accepts `multipart/form-data` with `photo`; returns temporary URL. |
-| Backend  | `POST /api/generate`              | Accepts `{ photo, location, time }`; calls Nano Banana and returns `{ imageUrl, generationTime }`. |
+## 部署到 Vercel（整仓库）
 
-### Local Dev Flow
-1. Start backend (`npm start` in `/backend`).
-2. Start frontend (`npm run dev` in `/frontend`). Vite proxy sends API calls to `localhost:3000`.
-3. Frontend calls `VITE_API_BASE_URL + /upload` and `/generate` automatically via axios/fetch.
+- 根目录包含 `vercel.json`：
+  - 前端使用 `@vercel/static-build`，输出目录为 `dist`
+  - 函数 `api/generate.js` 使用 `@vercel/node`
+  - 路由规则：
+    - `"/api/(.*)" -> "/api/$1"`
+    - 当请求的静态文件不存在时，`"/(.*)" -> "/index.html"`（SPA 回退，避免 404）
 
-## Features
+- 在 Vercel 项目设置添加环境变量：
+  - 前端（构建时）：`VITE_MAPBOX_TOKEN`
+  - 函数（运行时）：`NANO_BANANA_API_KEY`（必填）、`NANO_BANANA_API_URL`、`NANO_BANANA_MODEL`、`NANO_BANANA_RESPONSE_FORMAT`、`NANO_BANANA_SIZE`、`NANO_BANANA_QUALITY`、`TIMEOUT_MS`、`NANO_BANANA_USE_MASK`、`GOOGLE_CLOUD_API_KEY`
 
-- **Selfie Upload**: Upload and compress your photo.
-- **Location Selection**: Choose any place in the world.
-- **Time Travel**: Pick a date and time of day.
-- **AI Generation**: Generates a photorealistic image of you in that location.
+> 注意：当 `vercel.json` 定义了 `builds` 时，仪表盘中的 Build & Development Settings 会被忽略。
 
-## Tech Stack
+## 环境变量
 
-- **Frontend**: React, Vite, TailwindCSS, shadcn/ui, Lucide Icons
-- **Backend**: Express, Axios, Multer
-- **AI**: Nano Banana (Gemini 3 Pro Image Preview)
+- 根目录示例：`.env.example`（已提供）
+  - 前端：`VITE_API_BASE_URL=/api`、`VITE_MAPBOX_TOKEN=...`
+  - 函数：`NANO_BANANA_*`、`GOOGLE_CLOUD_API_KEY`
+  - 本地后端可选：`PORT=3000`
+
+## API 说明
+
+- `POST /api/generate`
+  - 请求体（JSON）：
+    - `photo`：前端 `data:image/...;base64,...`
+    - `location`：`{ name, coords: { lat, lng } }`
+    - `time`：`{ date: 'YYYY-MM-DD', timeOfDay: 'sunrise|morning|noon|afternoon|sunset|night' }`
+  - 响应体（JSON）：
+    - `imageUrl`：生成结果（URL 或 `data:image/png;base64,...`）
+    - `generationTime`：耗时字符串（如 `10.4s`）
+    - `streetview`：`{ status: 'ok' | 'skipped' }`
+
+## 常见问题（部署）
+
+- 首页或深链接 404：
+  - 确认 `vercel.json` 已配置 “文件缺失则回退到 `/index.html`”。
+  - 确保构建产出在 `dist`（日志显示 `dist/index.html`）。
+
+- 配置冲突：
+  - 若 `builds` 存在，仪表盘 Build 设置不生效，保持 `vercel.json` 为唯一来源。
+
+## 技术栈
+
+- 前端：React 18、Vite、TailwindCSS、Radix UI、Lucide、Framer Motion、Mapbox GL
+- 后端/函数：Node.js、Axios、FormData、Sharp、Google Street View（可选参考）
+
+## 许可
+
+- 仅用于演示与个人使用场景。请勿提交或记录任何敏感密钥至仓库；所有密钥通过环境变量注入。
