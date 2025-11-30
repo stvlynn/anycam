@@ -1,26 +1,27 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-AnyCam lives in `frontend/`, a Vite React app whose wizard logic sits in `src/App.jsx` and delegates to `src/components/` (e.g., `PhotoUploader.jsx`, `MapSelector.jsx`). Shared primitives stay in `src/components/ui/` and reuse `cn` from `src/lib/utils.js` when composing Tailwind classes. Product docs (`PRD.md`, `nano-banana.md`) and visual references (`ui-protfolio/*.png`) remain at the repo root—link to them from PRs whenever you change flows.
+AnyCam lives in `frontend/`, a Vite + React wizard that starts in `src/App.jsx` and fans into feature components under `src/components/` (e.g., `PhotoUploader.jsx`, `MapSelector.jsx`). Shared primitives stay in `src/components/ui/` and should import `cn` from `src/lib/utils.js` for readable Tailwind composition. Keep new tests co-located next to the component as `ComponentName.test.jsx`. Root-level docs (`PRD.md`, `nano-banana.md`) and visual references in `ui-protfolio/` describe current flows—link to them whenever you touch the wizard. Back-end prototypes live in `api/` and `backend/`; avoid mixing their logic with the front-end bundle.
 
 ## Build, Test, and Development Commands
-Run all commands from `frontend/`.
+Run commands from `frontend/`.
 ```bash
 npm install            # install dependencies
-npm run dev            # launch Vite dev server with the API proxy to :3000
-npm run build          # create production assets in dist/
-npm run preview        # serve the dist build locally
-npm run lint           # eslint with the React + globals config
+npm run dev            # Vite dev server + proxy to :3000
+npm run build          # production build to dist/
+npm run preview        # serve the compiled build locally
+npm run lint           # eslint using the React + globals config
+npx vitest run         # execute test suites until a package script exists
 ```
 
 ## Coding Style & Naming Conventions
-Follow the existing two-space indentation, ES modules, and functional React components with hooks at the top level. Name components with PascalCase (e.g., `ResultDisplay`) and props/state variables with camelCase. Keep Tailwind utility strings readable; lean on `cn()` plus `class-variance-authority` when variants explode, and import assets via the `@` alias from `vite.config.js` to avoid brittle relative paths.
+Stick to two-space indentation, ES modules, and functional components with hooks declared at the top level. Components use PascalCase (`ResultDisplay.jsx`), hooks/utilities use camelCase, and environment variables must be prefixed with `VITE_`. Compose Tailwind strings with `cn()` when variants grow, and prefer the `@` alias from `vite.config.js` over brittle relative imports.
 
 ## Testing Guidelines
-Automated tests have not landed yet, but new work should introduce Vitest + React Testing Library suites stored alongside components as `ComponentName.test.jsx`. Cover the landing→upload→result wizard states and any helper logic; aim for smoke coverage of each step before requesting review. Until a `test` script exists in package.json, run specs with `npx vitest run` and document manual QA steps in the PR. Always exercise the flow in `npm run dev` to ensure mocked API timing still advances steps.
+New UI or helper work should introduce Vitest + React Testing Library suites that mock the landing → upload → result flow. File names mirror the component (`PhotoUploader.test.jsx`) and should assert both happy paths and edge timing cases. Run tests with `npx vitest run` before pushing, then sanity-check the wizard via `npm run dev` to ensure mocked API timing still advances steps.
 
 ## Commit & Pull Request Guidelines
-The repository is just starting, so treat Conventional Commit style (`feat: add processing step animation`) as the source of truth. Commits should be scoped to one concern with passing lint/build. For PRs, describe the scenario, list visible changes, link to relevant PRD sections or UI mock files, and attach screenshots/GIFs for UI diff. Call out new environment variables and provide reproduction steps for reviewers.
+Follow Conventional Commits (`feat: add processing step animation`) and keep each commit scoped to a single concern with passing lint/build. PRs must describe the scenario, enumerate visible changes, link to relevant sections in `PRD.md` or `ui-protfolio/*.png`, and include screenshots/GIFs for UI shifts. Call out new environment variables, backend expectations, and manual QA steps so reviewers can reproduce quickly.
 
 ## Security & Configuration Tips
-Use `.env` files named `VITE_*` for secrets; never hardcode API keys in `src`. Vite already proxies `/api` to `http://localhost:3000`, so prefer relative fetch URLs. Keep any generated assets or temporary uploads out of version control and scrub personal data before sharing screenshots.
+Place secrets in `.env` files with `VITE_*` keys and never hardcode them in `src`. Fetch APIs through relative `/api` paths so Vite’s proxy handles `http://localhost:3000`. Exclude temporary uploads or generated assets from version control, and scrub any personal data before sharing debug media.
