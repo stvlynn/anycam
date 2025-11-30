@@ -1,0 +1,18 @@
+name = "anycam-pages"
+compatibility_date = "2025-11-30"
+pages_build_output_dir = "frontend/dist"
+
+[vars]
+# Upstream model/API settings
+NANO_BANANA_API_URL = "https://api.tu-zi.com/v1/images/edits"
+NANO_BANANA_MODEL = "gemini-3-pro-image-preview"
+NANO_BANANA_RESPONSE_FORMAT = "url"
+NANO_BANANA_QUALITY = ""
+NANO_BANANA_SIZE = "1024x1024"
+NANO_BANANA_USE_MASK = "false"
+
+# Optional Google Street View API key for header image
+GOOGLE_CLOUD_API_KEY = ""
+
+# Secrets: set via `wrangler secret put`
+# NANO_BANANA_API_KEY
