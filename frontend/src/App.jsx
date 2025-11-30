@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import axios from 'axios'
 import LandingPage from './components/LandingPage'
 import PhotoUploader from './components/PhotoUploader'
 import MapSelector from './components/MapSelector'
@@ -30,26 +31,23 @@ function App() {
   const handleTimeSelect = (time) => {
     setData(prev => ({ ...prev, time }))
     setStep('processing')
-    // Simulate generation start
     generateImage({ ...data, time })
   }
 
   const generateImage = async (requestData) => {
     try {
-      // TODO: Replace with actual API call
-      // For now simulate delay
-      setTimeout(() => {
-        setResultImage("https://via.placeholder.com/1024") // Mock result
+      const response = await axios.post('/api/generate', requestData)
+      const url = response?.data?.imageUrl
+      if (url) {
+        setResultImage(url)
         setStep('result')
-      }, 3000)
-      
-      // Real implementation would look like:
-      // const response = await axios.post('/api/generate', requestData)
-      // setResultImage(response.data.imageUrl)
-      // setStep('result')
+      } else {
+        console.error('No imageUrl in response', response?.data)
+        setStep('time')
+      }
     } catch (error) {
-      console.error("Generation failed", error)
-      // Handle error
+      console.error('Generation failed', error?.response?.data || error.message)
+      setStep('time')
     }
   }
 

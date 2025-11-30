@@ -38,6 +38,13 @@
 2. **上传自拍照**
    - 支持本地上传（JPG/PNG，最大5MB）
    - 支持调用Webcam实时拍照
+   - **手势识别自动拍照**（可选功能）：
+     - 使用计算机视觉（MediaPipe Hands / TensorFlow.js）实时检测手势
+     - 支持识别手势：比耶（✌️）、点赞（👍）
+     - 检测到目标手势后触发3秒倒计时
+     - 倒计时期间在屏幕上显示数字动画（3、2、1）
+     - 倒计时结束自动拍照并生成预览
+     - 用户可在设置中开启/关闭手势识别功能
    - 图片预览和重新选择功能
    - 前端压缩至合适尺寸（最大1024x1024）
 
@@ -91,7 +98,8 @@
 4. **地图服务**：Google Maps JavaScript API
 5. **图片处理**：Sharp (Node.js) / browser-image-compression (前端)
 6. **部署**：Vercel (前端) + Vercel Serverless Functions (后端)
-7. 图标：npm install remixicon --save
+7. **图标**：npm install remixicon --save
+8. **手势识别**：@mediapipe/hands 或 @tensorflow/tfjs + @tensorflow-models/handpose
 
 ### AI模型集成
 
@@ -219,6 +227,105 @@ MAX_FILE_SIZE=5242880  # 5MB
 - **请求限制**：单个IP每小时最多10次生成请求，防止滥用
 - **HTTPS**：全站使用HTTPS加密传输
 
+### 手势识别实现方案
+
+#### 技术选型
+- **推荐方案**：MediaPipe Hands (@mediapipe/hands)
+  - 优势：轻量级、实时性好、准确率高、支持21个关键点检测
+  - 缺点：需要加载模型文件（~2MB）
+- **备选方案**：TensorFlow.js + HandPose
+  - 优势：生态完善、可自定义训练
+  - 缺点：模型较大、性能开销更高
+
+#### 实现步骤
+1. **初始化手势检测**
+   - 在 PhotoUploader 组件加载时初始化 MediaPipe Hands
+   - 配置参数：maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.7
+   - 创建独立的 Canvas 用于手势检测（不影响视频显示）
+
+2. **实时手势识别**
+   - 每帧从 video 元素提取图像数据
+   - 调用 MediaPipe Hands 检测手部关键点
+   - 根据关键点位置判断手势类型：
+     - **比耶手势（✌️）**：检测食指和中指伸直，其他手指弯曲
+     - **点赞手势（👍）**：检测大拇指向上，其他手指弯曲
+   - 使用防抖机制：连续检测到相同手势3帧以上才触发
+
+3. **倒计时与拍照**
+   - 检测到目标手势后：
+     - 停止继续检测（避免重复触发）
+     - 在屏幕中央显示倒计时动画（3 → 2 → 1）
+     - 每个数字显示1秒，带缩放动画效果
+     - 倒计时结束后自动调用 handleCapture()
+     - 拍照完成后恢复手势检测
+
+4. **UI反馈**
+   - 在视频画面上叠加手势识别状态指示器
+   - 检测到手势时显示绿色边框提示
+   - 倒计时期间显示大号数字动画
+   - 提供开关按钮控制手势识别功能
+
+5. **性能优化**
+   - 降低检测帧率（15-20 FPS 足够）
+   - 在拍照预览时暂停手势检测
+   - 组件卸载时释放 MediaPipe 资源
+
+#### 代码结构
+```javascript
+// useGestureDetection.js - 自定义 Hook
+export function useGestureDetection(videoRef, onGestureDetected) {
+  const [isEnabled, setIsEnabled] = useState(false)
+  const [detectedGesture, setDetectedGesture] = useState(null)
+  
+  useEffect(() => {
+    if (!isEnabled) return
+    
+    const hands = new Hands({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+    })
+    
+    hands.setOptions({
+      maxNumHands: 1,
+      modelComplexity: 1,
+      minDetectionConfidence: 0.7,
+      minTrackingConfidence: 0.5
+    })
+    
+    hands.onResults((results) => {
+      if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        const gesture = detectGesture(results.multiHandLandmarks[0])
+        if (gesture) {
+          onGestureDetected(gesture)
+        }
+      }
+    })
+    
+    // 启动检测循环
+    const detectLoop = async () => {
+      if (videoRef.current && videoRef.current.readyState === 4) {
+        await hands.send({ image: videoRef.current })
+      }
+      requestAnimationFrame(detectLoop)
+    }
+    detectLoop()
+    
+    return () => hands.close()
+  }, [isEnabled, videoRef, onGestureDetected])
+  
+  return { isEnabled, setIsEnabled, detectedGesture }
+}
+
+function detectGesture(landmarks) {
+  // 实现手势识别逻辑
+  // 返回 'peace' | 'thumbsup' | null
+}
+```
+
+#### 依赖安装
+```bash
+npm install @mediapipe/hands @mediapipe/camera_utils
+```
+
 ### 监控与日志
 - **错误追踪**：使用Sentry记录前后端错误
 - **API调用监控**：记录每次API调用的耗时、成功率
@@ -235,6 +342,7 @@ MAX_FILE_SIZE=5242880  # 5MB
 
 **延后实现**：
 - Webcam实时拍照
+- **手势识别自动拍照**（增强功能）
 - 社交媒体分享
 - 用户账号系统
 - 历史记录保存

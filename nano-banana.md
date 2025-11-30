@@ -1,8 +1,4 @@
-# Gemini（Nanobanana）创建图像（传图）
-
-模型：gemini-3-pro-image-preview, gemini-3-pro-image-preview-hd
-密钥：需要在环境变量中配置 API_KEY
-base url：https://api.tu-zi.com
+# 创建图片编辑
 
 ## OpenAPI Specification
 
@@ -13,9 +9,9 @@ info:
   description: ''
   version: 1.0.0
 paths:
-  /v1/chat/completions:
+  /v1/images/edits:
     post:
-      summary: 创建图像（传图）
+      summary: 创建图片编辑
       deprecated: false
       description: >-
         更新: 
@@ -36,80 +32,86 @@ paths:
 
         [小白开箱即用教程（一步一步教你用）](https://wiki.tu-zi.com/s/8c61a536-7a59-4410-a5e2-8dab3d041958/doc/gemini-3-pro-image-preview-api-wCmFtI3Tm5)
       tags:
-        - 图片生成/nano-banana/chat 格式
-      parameters: []
+        - 图片生成/nano-banana/image/generations 格式(dalle 格式)
+      parameters:
+        - name: Authorization
+          in: header
+          description: ''
+          required: false
+          example: Bearer {{YOUR_API_KEY}}
+          schema:
+            type: string
       requestBody:
         content:
-          application/json:
+          multipart/form-data:
             schema:
               type: object
               properties:
                 model:
+                  example: gemini-3-pro-image-preview
                   type: string
-                  description: 模型名称
-                  examples:
-                    - gemini-3-pro-image-preview
-                    - gemini-3-pro-image-preview-hd
-                stream:
-                  type: boolean
-                  description: 是否开启流式
-                messages:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      role:
-                        type: string
-                      content:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            text:
-                              type: string
-                              description: 文本内容
-                            type:
-                              type: string
-                              description: 类型
-                            image_url:
-                              type: object
-                              properties:
-                                url:
-                                  type: string
-                                  description: 'url链接 或 base64 '
-                              required:
-                                - url
-                              x-apifox-orders:
-                                - url
-                          required:
-                            - type
-                          x-apifox-orders:
-                            - text
-                            - type
-                            - image_url
-                    x-apifox-orders:
-                      - role
-                      - content
+                prompt:
+                  description: 所需图像的文本描述。最大长度为 1000 个字符。
+                  example: merge two images
+                  type: string
+                image:
+                  description: 要编辑的图像。必须是有效的 PNG 文件，小于 4MB，并且是方形的。如果未提供遮罩，图像必须具有透明度，将用作遮罩。
+                  example:
+                    - >-
+                      file:///Users/xiangsx/Downloads/assets_task_01jqx6n1rde45tkxn5g99eq3b2_src_0
+                      (1).png
+                    - >-
+                      file:///Users/xiangsx/Downloads/assets_task_01jqgab5ghejwazz6vjk89q27c_src_0.png
+                  type: string
+                  format: binary
+                'n':
+                  description: 要生成的图像数。必须介于 1 和 10 之间。
+                  example: '1'
+                  type: string
+                response_format:
+                  description: 生成的图像返回的格式。必须是`url`或`b64_json`。
+                  example: url
+                  type: string
+                mask:
+                  description: >-
+                    附加图像，其完全透明区域（例如，alpha 为零的区域）指示image应编辑的位置。必须是有效的 PNG 文件，小于
+                    4MB，并且尺寸与原始image相同。
+                  example: file:///Users/xiangsx/Downloads/下载.png
+                  type: string
+                  format: binary
+                user:
+                  description: >-
+                    代表您的最终用户的唯一标识符，可以帮助 OpenAI
+                    监控和检测滥用行为。[了解更多](https://platform.openai.com/docs/guides/safety-best-practices/end-user-ids)。
+                  example: ''
+                  type: string
+                quality:
+                  type: string
+                  enum:
+                    - 1k
+                    - 2k
+                    - 4k
+                  x-apifox-enum:
+                    - value: 1k
+                      name: ''
+                      description: ''
+                    - value: 2k
+                      name: ''
+                      description: ''
+                    - value: 4k
+                      name: ''
+                      description: ''
+                  description: 选择图像生成质量（仅对香蕉 2 有效）
+                  example: ''
+                size:
+                  description: 格式{w}x{h}
+                  example: ''
+                  type: string
               required:
                 - model
-                - stream
-                - messages
-              x-apifox-orders:
-                - model
-                - stream
-                - messages
-            example:
-              model: gemini-3-pro-image-preview
-              stream: false
-              messages:
-                - role: user
-                  content:
-                    - text: draw a picture sililarity
-                      type: text
-                    - image_url:
-                        url: >-
-                          https://tuziai.oss-cn-shenzhen.aliyuncs.com/wiki/code/mdjourney/cat_3.png
-                      type: image_url
+                - prompt
+                - image
+            examples: {}
       responses:
         '200':
           description: ''
@@ -117,15 +119,38 @@ paths:
             application/json:
               schema:
                 type: object
-                properties: {}
-                x-apifox-orders: []
+                properties:
+                  created:
+                    type: integer
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        url:
+                          type: string
+                      required:
+                        - url
+                      x-apifox-orders:
+                        - url
+                required:
+                  - created
+                  - data
+                x-apifox-orders:
+                  - created
+                  - data
+              example:
+                created: 1589478378
+                data:
+                  - url: https://...
+                  - url: https://...
           headers: {}
           x-apifox-name: 成功
       security:
         - bearer: []
-      x-apifox-folder: 图片生成/nano-banana/chat 格式
+      x-apifox-folder: 图片生成/nano-banana/image/generations 格式(dalle 格式)
       x-apifox-status: released
-      x-run-in-apifox: https://app.apifox.com/web/project/7040782/apis/api-343646954-run
+      x-run-in-apifox: https://app.apifox.com/web/project/7040782/apis/api-343646957-run
 components:
   schemas: {}
   securitySchemes:
@@ -139,4 +164,3 @@ security:
   - bearer: []
 
 ```
-解释
